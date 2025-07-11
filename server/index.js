@@ -105,10 +105,56 @@ async function getSajuAnalysis(sajuPalja, section, name, gender) {
     if (data.error) {
         throw new Error(data.error);
     }
-    return data.response;
+    const englishAnalysis = data.response;
+    const koreanAnalysis = await translateText(englishAnalysis);
+    return koreanAnalysis;
 }
 
 // --- Main API Endpoint ---
+// --- 3. AI-Powered Translator ---
+async function translateText(englishText) {
+    const prompt = `Translate the following English text to Korean: "${englishText}"`;
+
+    try {
+        const ollamaResponse = await fetch(`${OLLAMA_API_BASE_URL}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL_NAME,
+                prompt: prompt,
+                stream: false,
+            }),
+        });
+
+        const data = await ollamaResponse.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        return data.response.trim();
+    } catch (e) {
+        console.error("Error translating text with AI:", e);
+        throw new Error("AI를 사용하여 텍스트를 번역하는 데 실패했습니다.");
+    }
+}
+
+// --- Main API Endpoints ---
+app.post('/api/translate', async (req, res) => {
+  try {
+    const { englishText } = req.body;
+
+    if (!englishText) {
+      return res.status(400).json({ error: '번역할 텍스트가 누락되었습니다.' });
+    }
+
+    const translatedText = await translateText(englishText);
+    res.json({ translatedText: translatedText });
+
+  } catch (error) {
+    console.error('Error processing translation request:', error);
+    res.status(500).json({ error: error.message || '번역 중 오류가 발생했습니다.' });
+  }
+});
+
 app.post('/api/get-saju', async (req, res) => {
   try {
     const { name, gender, calendarType, year, month, day, hour, isLeapMonth, section } = req.body;

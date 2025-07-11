@@ -28,6 +28,11 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   
+  // Translator State
+  const [englishText, setEnglishText] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+  const [isTranslating, setIsTranslating] = useState(false);
+
   // Data State
   const [sajuResults, setSajuResults] = useState({});
   const [userInfo, setUserInfo] = useState(null);
@@ -79,8 +84,31 @@ function App() {
 
   const handleTabSelect = (key) => {
     setActiveTab(key);
+    if (key === 'translator') return; // Do not fetch saju data for translator tab
     if (!sajuResults[key] && userInfo) {
       fetchSajuData(key, userInfo);
+    }
+  };
+
+  const handleTranslate = async () => {
+    setIsTranslating(true);
+    setTranslatedText('');
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ englishText }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || '번역 서버 오류');
+
+      setTranslatedText(data.translatedText);
+    } catch (error) {
+      console.error('Error translating text:', error);
+      setTranslatedText(`번역 오류: ${error.message}`);
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -165,6 +193,35 @@ function App() {
                     </Card>
                   </Tab>
                 ))}
+                <Tab eventKey="translator" title="번역기">
+                  <Card>
+                    <Card.Body style={{ minHeight: '200px' }}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>영어 텍스트 입력</Form.Label>
+                        <Form.Control
+                          as="textarea"
+                          rows={3}
+                          placeholder="번역할 영어 텍스트를 입력하세요."
+                          value={englishText}
+                          onChange={(e) => setEnglishText(e.target.value)}
+                        />
+                      </Form.Group>
+                      <div className="d-grid mb-3">
+                        <Button variant="success" onClick={handleTranslate} disabled={isTranslating || !englishText.trim()}>
+                          {isTranslating ? (
+                            <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> 번역 중...</>
+                          ) : '한국어로 번역하기'}
+                        </Button>
+                      </div>
+                      {translatedText && (
+                        <div>
+                          <h5>번역 결과:</h5>
+                          <p>{translatedText}</p>
+                        </div>
+                      )}
+                    </Card.Body>
+                  </Card>
+                </Tab>
               </Tabs>
             </div>
           )}
