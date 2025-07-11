@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fetch = require('node-fetch');
 
 const app = express();
 const port = 3001;
@@ -10,8 +10,8 @@ const port = 3001;
 app.use(cors());
 app.use(express.json());
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const OLLAMA_API_BASE_URL = process.env.OLLAMA_API_BASE_URL || 'http://localhost:11434'; // Default Ollama URL
+const OLLAMA_MODEL_NAME = process.env.OLLAMA_MODEL_NAME || 'llama3'; // Default Ollama model
 
 // --- 1. AI-Powered Manse-ryeok Calculator ---
 async function getSajuPalja(birthInfo) {
@@ -40,9 +40,21 @@ async function getSajuPalja(birthInfo) {
     `;
 
     try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text().replace(/```json|```/g, '').trim();
+        const ollamaResponse = await fetch(`${OLLAMA_API_BASE_URL}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL_NAME,
+                prompt: prompt,
+                stream: false,
+            }),
+        });
+
+        const data = await ollamaResponse.json();
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        const text = data.response.replace(/```json|```/g, '').trim();
         return JSON.parse(text);
     } catch (e) {
         console.error("Error parsing Saju Palja from AI:", e);
@@ -81,9 +93,21 @@ async function getSajuAnalysis(sajuPalja, section, name, gender) {
       이모지를 적절히 사용하여 내용을 더 친근하게 만들어주세요.
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const ollamaResponse = await fetch(`${OLLAMA_API_BASE_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: OLLAMA_MODEL_NAME,
+            prompt: prompt,
+            stream: false,
+        }),
+    });
+
+    const data = await ollamaResponse.json();
+    if (data.error) {
+        throw new Error(data.error);
+    }
+    return data.response;
 }
 
 // --- Main API Endpoint ---
