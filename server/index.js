@@ -98,6 +98,9 @@ app.post('/api/get-saju', async (req, res) => {
     // Step 1: Get Saju Palja from AI Calculator
     const sajuPalja = await getSajuPalja({ calendarType, year, month, day, hour, isLeapMonth });
 
+    // Add a delay to prevent model overload
+    await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 seconds delay
+
     // Step 2: Get Saju Analysis from AI Analyst
     const analysisResult = await getSajuAnalysis(sajuPalja, section, name, gender);
 
